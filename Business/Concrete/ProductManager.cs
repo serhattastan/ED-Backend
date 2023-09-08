@@ -3,6 +3,7 @@ using Business.Constants;
 using Business.ValidationRules.FluentValidation;
 using Core.Aspects.Autofac.Validation;
 using Core.CrossCuttingConcerns.Validation;
+using Core.Utilities.Business;
 using Core.Utilities.Results;
 using DataAccess.Abstract;
 using Entities.Concrete;
@@ -20,31 +21,29 @@ namespace Business.Concrete
     public class ProductManager : IProductService
     {
         IProductDal _productDal;
+        ICategoryService _categoryService;
 
-        public ProductManager(IProductDal productDal)
+        public ProductManager(IProductDal productDal, ICategoryService categoryService)
         {
             _productDal = productDal;
+            _categoryService = categoryService;
         }
 
 
         [ValidationAspect(typeof(ProductValidator))]
         public IResult Add(Product product)
         {
-            //Business Codes : İş Kodları
-            //Validation : Doğrulama
-            //Business kuralları buraya yazılır.
-
-            //ValidationTool.Validate(new ProductValidator(), product);       //Validation : Doğrulama Kodu
-            if (CheckIfProductCountOfCategoryCorrect(product.CategoryId).Success)
+            IResult result = BusinessRules.Run(
+                CheckIfProductNameExist(product.ProductName),
+                CheckIfProductCountOfCategoryCorrect(product.CategoryId)
+                );
+            if (result != null )
             {
-                if (CheckIfProductNameExist(product.ProductName).Success)
-                {
-                    _productDal.Add(product);
-                    return new SuccessResult(Messages.ProductAdded);
-                }
+                return result;
             }
-            return new ErrorResult();
-            
+
+            _productDal.Add(product);
+            return new SuccessResult(Messages.ProductAdded);
         }
 
         public IDataResult<List<Product>> GetAll()
@@ -81,16 +80,17 @@ namespace Business.Concrete
         [ValidationAspect(typeof(ProductValidator))]
         public IResult Update(Product product)
         {
-            if (CheckIfProductCountOfCategoryCorrect(product.CategoryId).Success)
+            IResult result = BusinessRules.Run(
+                CheckIfProductNameExist(product.ProductName),
+                CheckIfProductCountOfCategoryCorrect(product.CategoryId)
+                );
+            if (result != null)
             {
-                if (CheckIfProductNameExist(product.ProductName).Success)
-                {
-                    _productDal.Add(product);
-                    return new SuccessResult(Messages.ProductAdded);
-                }
-                
+                return result;
             }
-            return new ErrorResult();
+
+            _productDal.Add(product);
+            return new SuccessResult(Messages.ProductAdded);
         }
         private IResult CheckIfProductCountOfCategoryCorrect(int categoryId) 
         {
@@ -107,6 +107,15 @@ namespace Business.Concrete
             if (result)
             {
                 return new ErrorResult(Messages.ProductNameAlreadyExistError);
+            }
+            return new SuccessResult();
+        }
+        private IResult CheckIfCategoryLimitExceded()
+        {
+            var result = _categoryService.GetAll();
+            if (result.Data.Count > 15)
+            {
+                return new ErrorResult(Messages.CategoryLimitExceded);
             }
             return new SuccessResult();
         }
