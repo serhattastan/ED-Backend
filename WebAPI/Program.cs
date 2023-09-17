@@ -1,4 +1,4 @@
-using Autofac;
+﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Business.Abstract;
 using Business.Concrete;
@@ -25,13 +25,15 @@ builder.Services.AddSwaggerGen();
 //AOP
 //IoC Container -- Inversion of Control --> Autofac, Ninject, CastleWindsor, StructureMap, LightInject, DryInject
 //AOP
-//Postsharp --> ancak kurumsal ve �cretli altyapi mevcut
+//Postsharp --> ancak kurumsal ve ücretli altyapi mevcut
 
 //builder.Services.AddSingleton<IProductService, ProductManager>();
 //builder.Services.AddSingleton<IProductDal, EfProductDal>();
 builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory(options =>
     options.RegisterModule(new AutofacBusinessModule())
 ));
+
+builder.Services.AddCors();     //API nin çalışması için injetcion
 
 var tokenOptions = builder.Configuration.GetSection("TokenOptions").Get<TokenOptions>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -49,7 +51,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-//Katmanlardan bagimsiz ama projenin calismasina etki eden mod�lleri asagiya "," ile ayirarak ekleyebiliriz.
+//Katmanlardan bagimsiz ama projenin calismasina etki eden modülleri asagiya "," ile ayirarak ekleyebiliriz.
 builder.Services.AddDependecyResolvers(new ICoreModule[]
 {
     new CoreModule() //,new securityModule(),new aspectModule gibi
@@ -63,6 +65,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseCors(builder => builder.WithOrigins("http://localhost:4200").AllowAnyHeader());
 
 app.UseHttpsRedirection();
 
